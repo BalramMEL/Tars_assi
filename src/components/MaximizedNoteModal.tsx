@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { Dialog, DialogClose, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogClose, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { X, Bold, Italic, Underline } from "lucide-react";
 
@@ -14,12 +14,26 @@ export const MaximizedNoteModal = ({ isOpen, onClose, content, onChange }) => {
     }
   };
 
-  const handleContentChange = (e) => {
-    const newContent = e.target.innerHTML;
-    setCurrentContent(newContent);
-    // Pass HTML content up to parent
-    onChange({ target: { name: "noteContent", value: newContent } });
-  };
+ const handleContentChange = (e) => {
+  const selection = window.getSelection();
+  const range = selection.getRangeAt(0);
+  const startOffset = range.startOffset;
+
+  const newContent = e.target.innerHTML;
+  setCurrentContent(newContent);
+  onChange({ target: { name: "noteContent", value: newContent } });
+
+  // Restore Cursor Position
+  setTimeout(() => {
+    const newRange = document.createRange();
+    const newSelection = window.getSelection();
+    newRange.setStart(editorRef.current.firstChild, Math.min(startOffset, editorRef.current.firstChild.length));
+    newRange.collapse(true);
+    newSelection.removeAllRanges();
+    newSelection.addRange(newRange);
+  }, 0);
+};
+
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
