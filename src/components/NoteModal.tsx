@@ -24,84 +24,71 @@ export interface NoteModalProps {
   onRename: (id: string, newTitle: string) => void;
 }
 
-// interface AudioPlayerProps {
-//   src: string;
-//   duration: string;
-// }
-export default function NoteModal({ isOpen, onClose, id, title, isFavorite ,content, duration , images = [],noteIsRecorded, onRename }: NoteModalProps) {
+export default function NoteModal({ 
+  isOpen, 
+  onClose, 
+  id, 
+  title, 
+  content, 
+  noteIsRecorded = false, 
+  isFavorite = false, 
+  images = [],
+  duration,
+  onRename 
+}: NoteModalProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [isFavorited, setIsFavorited] = useState(false);
+  const [isFavorited, setIsFavorited] = useState(isFavorite);
   const [userID, setUserID] = useState<string>("");
-
-  const [uploadedImages, setUploadedImages] = useState<string[]>(images);
-  
+  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [formData, setFormData] = useState({
-    userId: userID, 
+    userId: "",
     title: "",
     noteContent: "",
-    isFavorite: isFavorite,
+    isFavorite: false,
     images: [] as string[],
     noteIsRecorded: false,
   });
-
-    const [isPlaying, setIsPlaying] = useState(false);
-    const [currentTime, setCurrentTime] = useState(0);
-
-    const [isSaving, setIsSaving] = useState(false);
-
-    const audioRef = useRef<HTMLAudioElement>(null);
-
-const fetchUser = async () => {
-  try {
-    const response = await axios.get("http://localhost:3000/api/fetch-user");
-    if (response.data?.user?._id) {
-      setUserID(response.data.user._id);
-    } else {
-      console.error("User ID not found in response");
-    }
-  } catch (error) {
-    console.error("Error fetching user:", error);
-  }
-  };
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [isSaving, setIsSaving] = useState(false);
+  const audioRef = useRef<HTMLAudioElement>(null);
   
-
-useEffect(() => {
-  fetchUser();
-}, []);
-  
+  // Fetch user only once when modal opens
   useEffect(() => {
     if (isOpen) {
-      // Initialize uploadedImages with the images prop when the modal opens
-      setUploadedImages(images);
-      setIsFavorited(isFavorite || false);
-
-      // Initialize formData with the props
-      setFormData((prev) => ({
-        ...prev,
-        userId: userID,
-        title,
-        noteContent: content,
-        noteIsRecorded: noteIsRecorded || false,
-        images: images,
-        isFavorite: isFavorite || false,
-      }));
+      fetchUser();
     }
-  }, [isOpen, userID, title, content, images, noteIsRecorded, isFavorite]);
+  }, [isOpen]);
 
-
-
+  // Initialize form data only when needed props change
   useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
+    if (isOpen) {
+      setUploadedImages(images);
+      setIsFavorited(isFavorite);
+      setFormData({
+        userId: userID,
+        title: title || "",
+        noteContent: content || "",
+        noteIsRecorded: noteIsRecorded || false,
+        images: [...images],
+        isFavorite: isFavorite || false,
+      });
+    }
+  }, [isOpen, userID, title, content, noteIsRecorded, isFavorite]);
 
-    const updateTime = () => setCurrentTime(audio.currentTime);
-    audio.addEventListener("timeupdate", updateTime);
-
-    return () => {
-      audio.removeEventListener("timeupdate", updateTime);
-    };
-  }, []);
+  const fetchUser = async () => {
+    try {
+      const response = await axios.get("http://localhost:3000/api/fetch-user");
+      if (response.data?.user?._id) {
+        setUserID(response.data.user._id);
+      } else {
+        console.error("User ID not found in response");
+      }
+    } catch (error) {
+      console.error("Error fetching user:", error);
+    }
+  };
 
   const togglePlay = () => {
     const audio = audioRef.current;
@@ -121,27 +108,25 @@ useEffect(() => {
     return `${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
   };
 
-  // Handle Removing an Image
- const handleRemoveImage = (index: number) => {
-    const newImages = uploadedImages.filter((_, i) => i !== index);
+  const handleRemoveImage = (index: number) => {
+    const newImages = [...uploadedImages];
+    newImages.splice(index, 1);
     setUploadedImages(newImages);
-    setFormData((prev) => ({
+    setFormData(prev => ({
       ...prev,
-      images: newImages, // Sync formData.images with updated uploadedImages
+      images: newImages,
     }));
   };
 
-
   const handleCopy = () => {
-    navigator.clipboard.writeText(content);
+    navigator.clipboard.writeText(formData.noteContent);
     toast.success("Copied to clipboard!");
   };
 
-const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-  const { name, value } = e.target;
-  setFormData((prev) => ({ ...prev, [name]: value }));
-};
-
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
 
   const validateForm = () => {
     if (!formData.title.trim()) {
@@ -154,7 +139,6 @@ const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElemen
     }
     return true;
   };
-
 
 const handleSaveNote = async (e: React.FormEvent) => {
   e.preventDefault();
@@ -229,31 +213,32 @@ const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
   };
 
   const handleShare = async () => {
-  if (navigator.share) {
-    try {
-      await navigator.share({
-        title: formData.title,
-        text: formData.noteContent,
-        // url: window.location.href
-      });
-      toast.success("Note shared successfully!");
-    } catch (error) {
-      toast.error("Failed to share the note.");
-      console.error("Sharing error:", error);
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: formData.title,
+          text: formData.noteContent,
+        });
+        toast.success("Note shared successfully!");
+      } catch (error) {
+        toast.error("Failed to share the note.");
+        console.error("Sharing error:", error);
+      }
+    } else {
+      toast.error("Sharing not supported in this browser.");
     }
-  } else {
-    toast.error("Sharing not supported in this browser.");
-  }
-};
+  };
 
+  // Use controlled dialog pattern
+  const handleDialogClose = () => {
+    onClose();
+  };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={handleDialogClose}>
       <DialogContent className={`${isFullscreen ? "w-full h-full max-w-none" : "max-w-2xl"}`}>
-        
         {/* Header with Icons Positioned */}
         <DialogHeader className="flex flex-col">
-          
           {/* Top Icons Row */}
           <div className="flex justify-between items-center w-full">
             {/* Maximize Icon (Top-Left) */}
@@ -276,8 +261,6 @@ const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
               >
                 <Star className={`w-5 h-5 ${isFavorited ? "text-yellow-500 fill-yellow-500" : "text-gray-500"}`} />
               </Button>
-
-
               <Button
                 variant="ghost"
                 size="sm"
@@ -286,7 +269,6 @@ const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
               >
                 <Share2 className="w-5 h-5 text-gray-500" />
               </Button>
-
               <DialogClose asChild className="p-2 rounded-full bg-gray-300">
                 <Button variant="ghost" size="sm"><X className="h-5 w-5" /></Button>
               </DialogClose>
@@ -296,126 +278,123 @@ const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
           {/* Title on Next Row */}
           <div className="mt-2 w-full">
             <DialogTitle className="text-lg font-semibold text-start mt-2">
-        {isEditing ? (
-          <Input
-            type="text"
-            name="title"
-            value={formData.title}
-            onChange={handleChange}
-            onBlur={() => {
-              setIsEditing(false);
-              onRename(id, formData.title); // Ensure title updates when editing stops
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                setIsEditing(false);
-                onRename(id, formData.title);
-              }
-            }}
-            autoFocus
-            className="border rounded-md p-1"
-          />
-        ) : (
-          <span onClick={() => setIsEditing(true)} className="cursor-pointer flex items-center gap-3">
-            {formData.title || title} <Edit3Icon className="w-4 h-4 opacity-50" />
-          </span>
-        )}
-      </DialogTitle>
-
+              {isEditing ? (
+                <Input
+                  type="text"
+                  name="title"
+                  value={formData.title}
+                  onChange={handleChange}
+                  onBlur={() => {
+                    setIsEditing(false);
+                    onRename(id, formData.title);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      setIsEditing(false);
+                      onRename(id, formData.title);
+                    }
+                  }}
+                  autoFocus
+                  className="border rounded-md p-1"
+                />
+              ) : (
+                <span onClick={() => setIsEditing(true)} className="cursor-pointer flex items-center gap-3">
+                  {formData.title || title} <Edit3Icon className="w-4 h-4 opacity-50" />
+                </span>
+              )}
+            </DialogTitle>
           </div>
-
         </DialogHeader>
 
         {/* Audio Playback & Transcription */}
-          <div className="flex flex-col">
-            <div className="flex items-center w-full space-x-2 p-2 border rounded-lg">
+        <div className="flex flex-col">
+          <div className="flex items-center w-full space-x-2 p-2 border rounded-lg">
             {/* Play/Pause Button */}
-                <button onClick={togglePlay} className="p-1">
-                    {isPlaying ? <Pause className="w-4 h-4 text-gray-700" /> : <Play className="w-4 h-4 text-gray-700" />}
-                </button>
+            <button onClick={togglePlay} className="p-1">
+              {isPlaying ? <Pause className="w-4 h-4 text-gray-700" /> : <Play className="w-4 h-4 text-gray-700" />}
+            </button>
 
             {/* Progress Bar */}
             <div className="relative flex-grow">
-                <input
+              <input
                 type="range"
                 min="0"
                 max={audioRef.current?.duration || 0}
                 value={currentTime}
                 onChange={(e) => {
-                    const newTime = Number(e.target.value);
-                    if (audioRef.current) {
+                  const newTime = Number(e.target.value);
+                  if (audioRef.current) {
                     audioRef.current.currentTime = newTime;
-                    }
-                    setCurrentTime(newTime);
+                  }
+                  setCurrentTime(newTime);
                 }}
                 className="w-full h-1 bg-gray-300 rounded-lg appearance-none cursor-pointer"
                 style={{
-                    background: `linear-gradient(to right, orange ${((currentTime / (audioRef.current?.duration || 1)) * 100)}%, #e5e7eb 0%)`,
+                  background: `linear-gradient(to right, orange ${((currentTime / (audioRef.current?.duration || 1)) * 100)}%, #e5e7eb 0%)`,
                 }}
-                />
+              />
             </div>
 
-      {/* Time Display */}
-      <span className="text-xs text-gray-600 w-16 text-right">
-        {formatTime(currentTime)} / 02:15
-      </span>
+            {/* Time Display */}
+            <span className="text-xs text-gray-600 w-16 text-right">
+              {formatTime(currentTime)} / {duration || "00:00"}
+            </span>
 
-      {/* Download Button */}
-      <a download className="text-xs text-gray-500 flex items-center space-x-1 border rounded-2xl border-gray-300 px-2 py-1">
-        <Download className="w-4 h-4" />
-        <span>Download Audio</span>
-      </a>
+            {/* Download Button */}
+            <a download className="text-xs text-gray-500 flex items-center space-x-1 border rounded-2xl border-gray-300 px-2 py-1">
+              <Download className="w-4 h-4" />
+              <span>Download Audio</span>
+            </a>
 
-      {/* Hidden Audio Element */}
+            {/* Hidden Audio Element */}
             <audio ref={audioRef} />
-            
-            <div>
-              <TabBar />
-            </div>
-    </div>
-            <div className="flex flex-col mt-5 border rounded-2xl border-gray-300">
-              <div className="flex items-center justify-between p-2">
-                <p className="text-md font-semibold">Transcript</p>
-                <Button variant="outline" className="rounded-2xl opacity-60" size="sm" onClick={handleCopy}>
-                  <Copy className="w-4 h-4 mr-1" /> Copy
-                </Button>  
-              </div>
-            <Textarea
-              className="border-none p-2 rounded-md focus:border-none focus:ring-0 focus:outline-none"
-              value={formData.noteContent}
-              onChange={handleChange}
-              name="noteContent"
-              style={{ outline: "none", border: "none", textDecorationLine: "none", textDecoration: "none" }}
-            />
-            </div>
           </div>
 
+          {/* TabBar Positioned Below Audio & Above Transcript */}
+          <div className="mt-3 border-gray-300 rounded-full w-max">
+            <TabBar />
+          </div>
+        </div>
+        <div className="flex flex-col mt-1 border rounded-2xl border-gray-300">
+          <div className="flex items-center justify-between p-2">
+            <p className="text-md font-semibold">Transcript</p>
+            <Button variant="outline" className="rounded-2xl opacity-60" size="sm" onClick={handleCopy}>
+              <Copy className="w-4 h-4 mr-1" /> Copy
+            </Button>  
+          </div>
+          <Textarea
+            className="border-none p-2 rounded-md focus:border-none focus:ring-0 focus:outline-none"
+            value={formData.noteContent}
+            onChange={handleChange}
+            name="noteContent"
+            style={{ outline: "none", border: "none", textDecorationLine: "none", textDecoration: "none" }}
+          />
+        </div>
 
         {/* Image Upload */}
         <div className="flex items-center space-x-2">
-      {uploadedImages.map((src, index) => (
-        <div key={index} className="relative w-16 h-16 border rounded-lg overflow-hidden">
-          <Image src={src} alt={`Uploaded ${index}`} layout="fill" objectFit="cover" className="rounded-lg" />
-          <button
-            className="absolute top-0 right-0 bg-white p-1 rounded-full shadow-md"
-            onClick={() => handleRemoveImage(index)}
-          >
-            <Trash className="w-4 h-4 text-gray-500" />
-          </button>
+          {uploadedImages.map((src, index) => (
+            <div key={index} className="relative w-16 h-16 border rounded-lg overflow-hidden">
+              <Image src={src} alt={`Uploaded ${index}`} layout="fill" objectFit="cover" className="rounded-lg" />
+              <button
+                className="absolute top-0 right-0 bg-white p-1 rounded-full shadow-md"
+                onClick={() => handleRemoveImage(index)}
+              >
+                <Trash className="w-4 h-4 text-gray-500" />
+              </button>
+            </div>
+          ))}
+
+          {/* Upload Button */}
+          <label className="w-16 h-16 flex flex-col items-center justify-center border border-dashed rounded-lg cursor-pointer">
+            <Upload className="w-6 h-6 text-gray-400" />
+            <span className="text-xs text-gray-500">Image</span>
+            <input type="file" className="hidden" multiple accept="image/*" onChange={handleImageUpload} />
+          </label>
         </div>
-      ))}
-
-
-      {/* Upload Button */}
-      <label className="w-16 h-16 flex flex-col items-center justify-center border border-dashed rounded-lg cursor-pointer">
-        <Upload className="w-6 h-6 text-gray-400" />
-        <span className="text-xs text-gray-500">Image</span>
-        <input type="file" className="hidden" multiple accept="image/*" onChange={handleImageUpload} />
-      </label>
-    </div>
 
         <div className="flex justify-end mt-4 space-x-2">
-          <Button variant="destructive" onClick={onClose}>Cancel Note</Button>
+          <Button variant="destructive" onClick={handleDialogClose}>Cancel Note</Button>
           <Button variant="outline" onClick={handleSaveNote} disabled={isSaving}>
             {isSaving ? "Saving..." : "Save Note"}
           </Button>

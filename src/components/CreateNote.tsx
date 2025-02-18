@@ -4,19 +4,15 @@ import { useEffect, useRef, useState } from "react";
 import { Edit3Icon, ImageIcon, Mic, Pause } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import NoteModal from "./NoteModal";
-// import axios from "axios";
-// import toast from "react-hot-toast";
 
-declare global{
+declare global {
   interface Window {
     webkitSpeechRecognition: any;
   }
 }
 
 export default function CreateNote() {
-  const [isLoading, setIsLoading] = useState(false);
   const [isRecording, setIsRecording] = useState<boolean>(false);
-  // const [recordingComplete, setRecordingComplete] = useState<boolean>(false);
   const [transcript, setTranscript] = useState<string>("");
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
 
@@ -35,20 +31,21 @@ export default function CreateNote() {
         .map((result: any) => result.transcript)
         .join("");
 
-      console.log("Transcript:",transcript);
+      console.log("Transcript:", transcript);
       setTranscript(transcript);
     };
 
     recognitionRef.current.start();
-  }
+  };
 
   const stopRecording = () => {
     if (recognitionRef.current) {
       recognitionRef.current.stop();
       setIsRecording(false);
-      setIsModalOpen(true);
+      // We'll open the modal after stopping recording
+      setTimeout(() => setIsModalOpen(true), 100);
     }
-  }
+  };
 
   useEffect(() => {
     return () => {
@@ -56,24 +53,41 @@ export default function CreateNote() {
         recognitionRef.current.stop();
       }
     };
-  })
+  }, []);
 
   const handleToggleRecording = () => {
-    setIsLoading(!isRecording);
     if (!isRecording) {
       startRecording();
     } else {
       stopRecording();
     }
-  }
+  };
+
+  // The key here is to create a standalone function for opening the modal
+  // that doesn't immediately call setState which can cause rerenders
+  const openModal = () => {
+    if (!isModalOpen) {
+      setIsModalOpen(true);
+    }
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+  };
 
   return (
-     <>
+    <>
       <div className="fixed bottom-6 flex justify-center w-[70%] right-16 items-center bg-white shadow-lg rounded-full px-4 py-2 space-x-3 border">
-        <button onClick={() => setIsModalOpen(true)} className="p-2 rounded-full hover:bg-gray-200 transition">
+        <button
+          onClick={openModal}
+          className="p-2 rounded-full hover:bg-gray-200 transition"
+        >
           <Edit3Icon />
         </button>
-        <button onClick={() => setIsModalOpen(true)} className="p-2 rounded-full hover:bg-gray-200 transition">
+        <button
+          onClick={openModal}
+          className="p-2 rounded-full hover:bg-gray-200 transition"
+        >
           <ImageIcon />
         </button>
 
@@ -88,19 +102,20 @@ export default function CreateNote() {
         </Button>
       </div>
 
-      {/* Render the NoteModal when isModalOpen is true */}
-      <NoteModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        id="new-note"
-        title="New Note"
-        content={transcript}
-        noteIsRecorded={transcript.length > 0 ? true : false}
-        onRename={(id, newTitle) => {
-          // Handle renaming logic here
-          console.log(`Renamed note ${id} to ${newTitle}`);
-        }}
-      />
+      {/* Only render when modal should be open */}
+      {isModalOpen && (
+        <NoteModal
+          isOpen={isModalOpen}
+          onClose={handleCloseModal}
+          id="new-note"
+          title="New Note"
+          content={transcript}
+          noteIsRecorded={transcript.length > 0}
+          onRename={(id, newTitle) => {
+            console.log(`Renamed note ${id} to ${newTitle}`);
+          }}
+        />
+      )}
     </>
   );
 }

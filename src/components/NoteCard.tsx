@@ -26,7 +26,8 @@ export default function NoteCard({ id, title, content, date, duration, noteIsRec
   const [isDeleting, setIsDeleting] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
 
-  const handleCopy = () => {
+  const handleCopy = (e) => {
+    e.stopPropagation();
     navigator.clipboard.writeText(content);
     toast.success("Copied to clipboard!");
   };
