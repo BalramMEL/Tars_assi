@@ -16,7 +16,7 @@ const LoginPage = () => {
     password: "",
   });
 
-  const handleChange = (e) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
@@ -36,7 +36,7 @@ const LoginPage = () => {
     return true;
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (validateForm()) {
       try {
@@ -47,7 +47,11 @@ const LoginPage = () => {
         router.push("/");
       } catch (error) {
         setIsLoading(false);
-        toast.error(error.response?.data?.message || "Login failed");
+        if (error instanceof Error) {
+          toast.error(error.message);
+        } else {
+          toast.error("Login Failed");
+        }
       }
     }
   };
@@ -58,7 +62,7 @@ const LoginPage = () => {
         <div className="text-center">
           <h2 className="text-2xl font-bold text-gray-800">Sign in to your account</h2>
           <p className="text-sm text-gray-600 mt-2">
-            Don't have an account? {" "}
+            Don&apos;t have an account? {" "}
             <Link href="/sign-up" className="text-blue-600 hover:underline">
               Sign up
             </Link>

@@ -17,7 +17,7 @@ const SignUpPage = () => {
     password: "",
   });
 
-  const handleChange = (e) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
@@ -41,7 +41,7 @@ const SignUpPage = () => {
     return true;
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (validateForm()) {
       try {
@@ -52,7 +52,11 @@ const SignUpPage = () => {
         router.push("/");
       } catch (error) {
         setIsLoading(false);
-        toast.error(error.response?.data?.message || "Signup failed");
+        if (error instanceof Error) {
+          toast.error(error.message);
+        } else {
+          toast.error("Sign in failed");
+        }
       }
     }
   };

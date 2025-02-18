@@ -7,6 +7,7 @@ import NoteModal from "./NoteModal";
 
 declare global {
   interface Window {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     webkitSpeechRecognition: any;
   }
 }
@@ -16,6 +17,7 @@ export default function CreateNote() {
   const [transcript, setTranscript] = useState<string>("");
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
 
   const startRecording = () => {
@@ -25,9 +27,12 @@ export default function CreateNote() {
     recognitionRef.current.continuous = true;
     recognitionRef.current.interimResults = true;
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     recognitionRef.current.onresult = (event: any) => {
       const transcript = Array.from(event.results)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .map((result: any) => result[0])
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .map((result: any) => result.transcript)
         .join("");
 

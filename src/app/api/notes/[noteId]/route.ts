@@ -10,7 +10,7 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// 🗑️ DELETE a note
+// DELETE a note
 export async function DELETE(req: Request, { params }: { params: { noteId: string } }) {
   await connectDB();
 
@@ -36,11 +36,11 @@ export async function DELETE(req: Request, { params }: { params: { noteId: strin
     return NextResponse.json({ success: true, message: "Note deleted" }, { status: 200 });
   } catch (error) {
     console.error("Error deleting note:", error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: (error as Error).message }, { status: 500 });
   }
 }
 
-// ✏️ UPDATE an existing note
+//  UPDATE an existing note
 export async function PUT(req: Request, { params }: { params: { noteId: string } }) {
   await connectDB();
 
@@ -67,7 +67,7 @@ export async function PUT(req: Request, { params }: { params: { noteId: string }
     let uploadedImages = images || [];
 
     if (images && images.length > 0) {
-      const uploadPromises = images.map(async (image) => {
+      const uploadPromises = images.map(async (image: string) => {
         if (image.startsWith("http")) return image; // Skip re-upload if it's already a URL
 
         try {
@@ -101,6 +101,6 @@ export async function PUT(req: Request, { params }: { params: { noteId: string }
 
   } catch (error) {
     console.error("Error updating note:", error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: (error as Error).message  }, { status: 500 });
   }
 }

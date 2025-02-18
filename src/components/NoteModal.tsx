@@ -32,6 +32,7 @@ export default function NoteModal({
   noteIsRecorded = false, 
   isFavorite = false, 
   images = [],
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   duration,
   onRename 
 }: NoteModalProps) {
@@ -84,7 +85,8 @@ export default function NoteModal({
         isFavorite: isFavorite || false,
       });
     }
-  }, [isOpen, userID, title, content, noteIsRecorded, isFavorite, images]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, userID, title, content, noteIsRecorded, isFavorite]);
 
   const fetchUser = async () => {
     try {
@@ -184,6 +186,7 @@ export default function NoteModal({
 
       setIsSaving(false);
       onClose();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       setIsSaving(false);
       toast.error(error.response?.data?.message || "Failed to save note");
@@ -398,7 +401,7 @@ export default function NoteModal({
           isOpen={isMaximized}
           onClose={() => setIsMaximized(false)}
           content={formData.noteContent}
-          onChange={(e) => setFormData(prev => ({ ...prev, noteContent: e.target.value }))}
+          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setFormData(prev => ({ ...prev, noteContent: e.target.value }))}
         />
 
         {/* Image Upload */}

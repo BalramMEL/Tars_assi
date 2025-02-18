@@ -3,6 +3,7 @@ import jwt, { JwtPayload } from "jsonwebtoken";
 import { connectDB } from "../config/db";
 import User from "../models/user-model";
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function GET(request: Request) {
   await connectDB();
   const cookieStore = await cookies();
@@ -28,6 +29,7 @@ export async function GET(request: Request) {
     }
 
     return Response.json({ user }, { status: 200 });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     console.log("Error in fetching user", error);
     return Response.json({ message: error.message }, { status: 400 });

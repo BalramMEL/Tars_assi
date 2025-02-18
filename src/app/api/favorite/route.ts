@@ -7,7 +7,8 @@ import { connectDB } from "../config/db";
 await connectDB();
 
 // GET endpoint to fetch favorite notes
-export async function GET(req) {
+
+export async function GET(req:Request) {
   try {
     const { searchParams } = new URL(req.url);
     const userId = searchParams.get("userId");
@@ -26,9 +27,16 @@ export async function GET(req) {
     return NextResponse.json({ success: true, notes: favoriteNotes }, { status: 200 });
   } catch (error) {
     console.error("Error fetching favorite notes:", error);
-    return NextResponse.json(
-      { success: false, error: error.message },
-      { status: 500 }
-    );
+    if (error instanceof Error) {
+      return NextResponse.json(
+        { success: false, error: error.message },
+        { status: 500 }
+      );
+    } else {
+      return NextResponse.json(
+        { success: false, error: "An unknown error occurred" },
+        { status: 500 }
+      );
+    }
   }
 }

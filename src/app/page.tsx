@@ -25,6 +25,7 @@ interface Note {
 }
 
 export default function Home() {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [user, setUser] = useState<any>(null);
   const [isFetchingUser, setIsFetchingUser] = useState(true);
   const [notes, setNotes] = useState<Note[]>([]);

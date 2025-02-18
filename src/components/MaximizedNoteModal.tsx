@@ -3,34 +3,52 @@ import { Dialog, DialogClose, DialogContent, DialogTitle } from "@/components/ui
 import { Button } from "@/components/ui/button";
 import { X, Bold, Italic, Underline } from "lucide-react";
 
-export const MaximizedNoteModal = ({ isOpen, onClose, content, onChange }) => {
-  const editorRef = useRef(null);
+interface MaximizedNoteModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  content: string;
+  onChange: (event: React.ChangeEvent<HTMLTextAreaElement>) => void;
+}
+
+export const MaximizedNoteModal = ({ isOpen, onClose, content, onChange }: MaximizedNoteModalProps) => {
+  const editorRef = useRef<HTMLDivElement>(null);
   const [currentContent, setCurrentContent] = useState(content);
 
-  const handleTextFormat = (command) => {
+  const handleTextFormat = (command: string) => {
     if (editorRef.current) {
       editorRef.current.focus();
-      document.execCommand(command, false, null);
+      document.execCommand(command, false, undefined);
     }
   };
 
- const handleContentChange = (e) => {
+ const handleContentChange = (e: React.FormEvent<HTMLDivElement>) => {
   const selection = window.getSelection();
+  if (!selection) return;
   const range = selection.getRangeAt(0);
   const startOffset = range.startOffset;
 
-  const newContent = e.target.innerHTML;
+  const newContent = (e.target as HTMLDivElement).innerHTML;
   setCurrentContent(newContent);
-  onChange({ target: { name: "noteContent", value: newContent } });
+  const customEvent = {
+    target: {
+      name: "noteContent",
+      value: newContent
+    }
+  } as unknown as React.ChangeEvent<HTMLTextAreaElement>;
+  onChange(customEvent);
 
   // Restore Cursor Position
   setTimeout(() => {
     const newRange = document.createRange();
     const newSelection = window.getSelection();
-    newRange.setStart(editorRef.current.firstChild, Math.min(startOffset, editorRef.current.firstChild.length));
-    newRange.collapse(true);
-    newSelection.removeAllRanges();
-    newSelection.addRange(newRange);
+    if (editorRef.current && editorRef.current.firstChild) {
+      newRange.setStart(editorRef.current.firstChild as Text, Math.min(startOffset, (editorRef.current.firstChild as Text).length));
+      newRange.collapse(true);
+      if (newSelection) {
+        newSelection.removeAllRanges();
+        newSelection.addRange(newRange);
+      }
+    }
   }, 0);
 };
 
