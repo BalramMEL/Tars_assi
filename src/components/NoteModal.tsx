@@ -10,6 +10,7 @@ import toast from "react-hot-toast";
 import Image from "next/image";
 import axios from "axios";
 import TabBar from "./TabBar";
+import { MaximizedNoteModal } from "./MaximizedNoteModal";
 
 export interface NoteModalProps {
   isOpen: boolean;
@@ -38,6 +39,7 @@ export default function NoteModal({
 }: NoteModalProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isMaximized, setIsMaximized] = useState(false);
   const [isFavorited, setIsFavorited] = useState(isFavorite);
   const [userID, setUserID] = useState<string>("");
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
@@ -75,7 +77,7 @@ export default function NoteModal({
         isFavorite: isFavorite || false,
       });
     }
-  }, [isOpen, userID, title, content, noteIsRecorded, isFavorite]);
+  }, [isOpen, userID, title, content, noteIsRecorded, isFavorite, images]);
 
   const fetchUser = async () => {
     try {
@@ -360,18 +362,30 @@ const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         <div className="flex flex-col mt-1 border rounded-2xl border-gray-300">
           <div className="flex items-center justify-between p-2">
             <p className="text-md font-semibold">Transcript</p>
-            <Button variant="outline" className="rounded-2xl opacity-60" size="sm" onClick={handleCopy}>
-              <Copy className="w-4 h-4 mr-1" /> Copy
-            </Button>  
+            <div className="flex items-center space-x-2">
+      <Button variant="outline" className="rounded-2xl opacity-60" size="sm" onClick={handleCopy}>
+        <Copy className="w-4 h-4 mr-1" /> Copy
+      </Button>
+      <Button variant="outline" className="rounded-2xl opacity-60" size="sm" onClick={() => setIsMaximized(true)}>
+        <Maximize2Icon className="w-4 h-4" />
+      </Button>
+    </div>  
           </div>
           <Textarea
-            className="border-none p-2 rounded-md"
+            className="border-none p-2 rounded-md focus:border-none"
             value={formData.noteContent}
             onChange={handleChange}
             name="noteContent"
             style={{ outline: "none", border: "none", textDecorationLine: "none", textDecoration: "none" }}
           />
         </div>
+
+        <MaximizedNoteModal
+          isOpen={isMaximized}
+          onClose={() => setIsMaximized(false)}
+          content={formData.noteContent}
+          onChange={(e) => setFormData(prev => ({ ...prev, noteContent: e.target.value }))}
+        />
 
         {/* Image Upload */}
         <div className="flex items-center space-x-2">
