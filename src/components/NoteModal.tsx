@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Copy, Play, Star, Upload, Share2, X, Maximize2Icon, Trash, Download, Pause, Edit3Icon } from "lucide-react";
+import { Copy, Play, Star, Upload, Share2, X, Maximize2Icon, Trash, Download, Pause, Edit3Icon, Minimize2Icon } from "lucide-react";
 import toast from "react-hot-toast";
 import Image from "next/image";
 import axios from "axios";
@@ -91,14 +91,14 @@ export default function NoteModal({
   };
 
   const togglePlay = () => {
-    const audio = audioRef.current;
-    if (!audio) return;
+    // const audio = audioRef.current;
+    // if (!audio) return;
 
-    if (isPlaying) {
-      audio.pause();
-    } else {
-      audio.play();
-    }
+    // if (isPlaying) {
+    //   audio.pause();
+    // } else {
+    //   audio.play();
+    // }
     setIsPlaying(!isPlaying);
   };
 
@@ -248,7 +248,9 @@ const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
               size="sm" 
               onClick={() => setIsFullscreen(!isFullscreen)}
             >
-              <Maximize2Icon className="w-5 h-5" />
+              {
+                isFullscreen ? <Minimize2Icon className="w-5 h-5" /> : <Maximize2Icon className="w-5 h-5" />
+              } 
             </Button>
 
             {/* Icons on the Top-Right */}
@@ -310,8 +312,8 @@ const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         <div className="flex flex-col">
           <div className="flex items-center w-full space-x-2 p-2 border rounded-lg">
             {/* Play/Pause Button */}
-            <button onClick={togglePlay} className="p-1">
-              {isPlaying ? <Pause className="w-4 h-4 text-gray-700" /> : <Play className="w-4 h-4 text-gray-700" />}
+            <button onClick={togglePlay} className=" p-1 border rounded-full border-gray-300 bg-black">
+              {isPlaying ? <Pause className="w-4 h-4 text-white" /> : <Play className="w-4 h-4 text-white" />}
             </button>
 
             {/* Progress Bar */}
@@ -337,7 +339,7 @@ const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
 
             {/* Time Display */}
             <span className="text-xs text-gray-600 w-16 text-right">
-              {formatTime(currentTime)} / {duration || "00:00"}
+              {formatTime(currentTime)} / 00:15
             </span>
 
             {/* Download Button */}
@@ -363,7 +365,7 @@ const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
             </Button>  
           </div>
           <Textarea
-            className="border-none p-2 rounded-md focus:border-none focus:ring-0 focus:outline-none"
+            className="border-none p-2 rounded-md"
             value={formData.noteContent}
             onChange={handleChange}
             name="noteContent"
