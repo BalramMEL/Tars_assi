@@ -96,6 +96,11 @@ export default function Home() {
 
   return (
     <div className="flex h-screen">
+      {
+        isFetchingUser && (
+          <Loader />
+        )
+      }
       {/* Sidebar */}
       <SidebarProvider>
         <Sidebar>
