@@ -1,5 +1,3 @@
-"use client";
-
 import { useEffect, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -55,7 +53,16 @@ export default function NoteModal({
   const [currentTime, setCurrentTime] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
-  
+  const synthRef = useRef<SpeechSynthesis | null>(null); // Ref for SpeechSynthesis
+  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null); // Ref for SpeechSynthesisUtterance15
+
+  // Initialize SpeechSynthesis
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      synthRef.current = window.speechSynthesis;
+    }
+  }, []);
+
   // Fetch user only once when modal opens
   useEffect(() => {
     if (isOpen) {
@@ -93,14 +100,22 @@ export default function NoteModal({
   };
 
   const togglePlay = () => {
-    // const audio = audioRef.current;
-    // if (!audio) return;
+    if (!synthRef.current) return;
 
-    // if (isPlaying) {
-    //   audio.pause();
-    // } else {
-    //   audio.play();
-    // }
+    if (isPlaying) {
+      // Pause speech
+      synthRef.current.pause();
+    } else {
+      // Start or resume speech
+      if (!utteranceRef.current) {
+        // Create a new utterance if it doesn't exist
+        utteranceRef.current = new SpeechSynthesisUtterance(formData.noteContent);
+        utteranceRef.current.onend = () => {
+          setIsPlaying(false);
+        };
+      }
+      synthRef.current.speak(utteranceRef.current);
+    }
     setIsPlaying(!isPlaying);
   };
 
@@ -142,69 +157,68 @@ export default function NoteModal({
     return true;
   };
 
-const handleSaveNote = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setIsSaving(true);
+  const handleSaveNote = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSaving(true);
 
-  if (!validateForm()) {
-    setIsSaving(false);
-    return;
-  }
-
-  try {
-    if (id && id !== "new-note") {
-      await axios.put(`http://localhost:3000/api/notes/${id}`, formData);
-      console.log("Updated note:", formData);
-      window.location.reload();
-      toast.success("Note updated successfully!");
-    } else {
-      const response = await axios.post("http://localhost:3000/api/notes", formData);
-      window.location.reload();
-      toast.success("Note created successfully!");
-      
-      if (response.data?.note?._id) {
-        setFormData((prev) => ({ ...prev, id: response.data.note._id }));
-      }
+    if (!validateForm()) {
+      setIsSaving(false);
+      return;
     }
 
-    setIsSaving(false);
-    onClose();
-  } catch (error: any) {
-    setIsSaving(false);
-    toast.error(error.response?.data?.message || "Failed to save note");
-  }
-};
+    try {
+      if (id && id !== "new-note") {
+        await axios.put(`http://localhost:3000/api/notes/${id}`, formData);
+        console.log("Updated note:", formData);
+        window.location.reload();
+        toast.success("Note updated successfully!");
+      } else {
+        const response = await axios.post("http://localhost:3000/api/notes", formData);
+        window.location.reload();
+        toast.success("Note created successfully!");
+        
+        if (response.data?.note?._id) {
+          setFormData((prev) => ({ ...prev, id: response.data.note._id }));
+        }
+      }
 
-  
-const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-  const files = e.target.files;
-  if (!files || files.length === 0) return;
-
-  const convertToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = (error) => reject(error);
-    });
+      setIsSaving(false);
+      onClose();
+    } catch (error: any) {
+      setIsSaving(false);
+      toast.error(error.response?.data?.message || "Failed to save note");
+    }
   };
 
-  try {
-    const base64Images = await Promise.all(Array.from(files).map(convertToBase64));
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
 
-    // Update state with base64 images (for preview)
-    setUploadedImages((prevImages) => [...prevImages, ...base64Images]);
+    const convertToBase64 = (file: File): Promise<string> => {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = (error) => reject(error);
+      });
+    };
 
-    // Send to your API
-    setFormData((prevForm) => ({
-      ...prevForm,
-      images: [...prevForm.images, ...base64Images], // Store Base64 in formData
-    }));
-  } catch (error) {
-    toast.error("Failed to process images");
-    console.error("Image processing error:", error);
-  }
-};
+    try {
+      const base64Images = await Promise.all(Array.from(files).map(convertToBase64));
+
+      // Update state with base64 images (for preview)
+      setUploadedImages((prevImages) => [...prevImages, ...base64Images]);
+
+      // Send to your API
+      setFormData((prevForm) => ({
+        ...prevForm,
+        images: [...prevForm.images, ...base64Images], // Store Base64 in formData
+      }));
+    } catch (error) {
+      toast.error("Failed to process images");
+      console.error("Image processing error:", error);
+    }
+  };
 
   const handleFavorite = () => {
     setIsFavorited((prev) => {
@@ -312,7 +326,7 @@ const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
 
         {/* Audio Playback & Transcription */}
         <div className="flex flex-col">
-          <div className="flex items-center w-full space-x-2 p-2 border rounded-lg">
+          <div className="flex items-center w-full space-x-2 p-2 border border-gray-300 rounded-full">
             {/* Play/Pause Button */}
             <button onClick={togglePlay} className=" p-1 border rounded-full border-gray-300 bg-black">
               {isPlaying ? <Pause className="w-4 h-4 text-white" /> : <Play className="w-4 h-4 text-white" />}
@@ -341,17 +355,17 @@ const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
 
             {/* Time Display */}
             <span className="text-xs text-gray-600 w-16 text-right">
-              {formatTime(currentTime)} / 00:15
+              {formatTime(currentTime)} / 00:05
             </span>
 
             {/* Download Button */}
-            <a download className="text-xs text-gray-500 flex items-center space-x-1 border rounded-2xl border-gray-300 px-2 py-1">
+            <a download onClick={() => {}} className="cursor text-xs text-gray-500 flex items-center space-x-1 border rounded-2xl border-gray-300 px-2 py-1">
               <Download className="w-4 h-4" />
               <span>Download Audio</span>
             </a>
 
             {/* Hidden Audio Element */}
-            <audio ref={audioRef} />
+            {/* <audio ref={audioRef} /> */}
           </div>
 
           {/* TabBar Positioned Below Audio & Above Transcript */}
@@ -363,13 +377,13 @@ const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
           <div className="flex items-center justify-between p-2">
             <p className="text-md font-semibold">Transcript</p>
             <div className="flex items-center space-x-2">
-      <Button variant="outline" className="rounded-2xl opacity-60" size="sm" onClick={handleCopy}>
-        <Copy className="w-4 h-4 mr-1" /> Copy
-      </Button>
-      <Button variant="outline" className="rounded-2xl opacity-60" size="sm" onClick={() => setIsMaximized(true)}>
-        <Maximize2Icon className="w-4 h-4" />
-      </Button>
-    </div>  
+              <Button variant="outline" className="rounded-2xl opacity-60" size="sm" onClick={handleCopy}>
+                <Copy className="w-4 h-4 mr-1" /> Copy
+              </Button>
+              <Button variant="outline" className="rounded-2xl opacity-60" size="sm" onClick={() => setIsMaximized(true)}>
+                <Maximize2Icon className="w-4 h-4" />
+              </Button>
+            </div>  
           </div>
           <Textarea
             className="border-none p-2 rounded-md focus:border-none"

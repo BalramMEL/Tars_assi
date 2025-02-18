@@ -5,7 +5,7 @@ export default function TabBar() {
   const [activeTab, setActiveTab] = useState(2);
 
   return (
-    <div className="flex items-start space-x-1 bg-gray-100 p-1 rounded-full w-max">
+    <div className="flex items-start space-x-1 bg-gray-200 p-1 rounded-full w-max">
       {DataRow().map((item) => (
         <button
           key={item.id}
