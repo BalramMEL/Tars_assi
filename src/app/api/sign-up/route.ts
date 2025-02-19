@@ -41,7 +41,11 @@ export async function POST(request: Request) {
       },
       { status: 201 }
     );
-  } catch (error: any) {
-    return Response.json({ message: error.message }, { status: 400 });
+  } catch (error: unknown) {
+    if (error instanceof Error) {
+      return Response.json({ message: error.message }, { status: 400 });
+    } else {
+      return Response.json({ message: "An unknown error occurred." }, { status: 400 });
+    }
   }
 }
