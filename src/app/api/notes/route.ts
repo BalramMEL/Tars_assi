@@ -12,7 +12,7 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-export async function POST(req) {
+export async function POST(req: Request) {
   await connectDB();
 
   try {
@@ -39,7 +39,7 @@ export async function POST(req) {
 
     // Upload images to Cloudinary
     if (images && images.length > 0) {
-      const uploadPromises = images.map(async (image) => {
+      const uploadPromises = images.map(async (image: string) => {
         try {
           const result = await cloudinary.uploader.upload(image, {
             folder: "events",
@@ -69,13 +69,13 @@ export async function POST(req) {
 
   } catch (error) {
     console.error("Error creating note:", error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 400 });
+    return NextResponse.json({ success: false, error: (error as Error).message }, { status: 400 });
   }
 }
 
 
 // Get all notes for a user
-export async function GET(req) {
+export async function GET(req: Request) {
   await connectDB();
   try {
     const { searchParams } = new URL(req.url);
@@ -93,7 +93,7 @@ export async function GET(req) {
     return NextResponse.json({ success: true, notes }, { status: 200 });
   } catch (error) {
     console.error("Error fetching notes:", error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: (error as Error).message }, { status: 500 });
   }
 }
 

@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { connectDB } from "../config/db";
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function POST(request: Request) {
   await connectDB();
   try {
