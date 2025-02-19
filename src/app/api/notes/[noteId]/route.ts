@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { connectDB } from "../../config/db";
 import SingleNote from "../../models/card-details-model";
 import mongoose from "mongoose";
@@ -41,20 +41,22 @@ export async function DELETE(req: Request, { params }: { params: { noteId: strin
 }
 
 //  UPDATE an existing note
-export async function PUT(req: Request, { params }: { params: { noteId: string } }) {
+export async function PUT(req: NextRequest) {
   await connectDB();
 
   try {
-    const { noteId } = params;
-    const body = await req.json();
-    const { title, noteContent, isFavorite, images, noteIsRecorded } = body;
+    const url = new URL(req.url);
+    const noteId = url.pathname.split("/").pop(); // Extract noteId from URL
 
-    if (!mongoose.Types.ObjectId.isValid(noteId)) {
+    if (!noteId || !mongoose.Types.ObjectId.isValid(noteId)) {
       return NextResponse.json(
         { success: false, message: "Invalid noteId" },
         { status: 400 }
       );
     }
+
+    const body = await req.json();
+    const { title, noteContent, isFavorite, images, noteIsRecorded } = body;
 
     if (!title.trim() || !noteContent.trim()) {
       return NextResponse.json(
@@ -63,7 +65,6 @@ export async function PUT(req: Request, { params }: { params: { noteId: string }
       );
     }
 
-    // 🌟 Optimize Image Uploads (Only Upload New Images)
     let uploadedImages = images || [];
 
     if (images && images.length > 0) {
@@ -101,6 +102,9 @@ export async function PUT(req: Request, { params }: { params: { noteId: string }
 
   } catch (error) {
     console.error("Error updating note:", error);
-    return NextResponse.json({ success: false, error: (error as Error).message  }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: (error as Error).message },
+      { status: 500 }
+    );
   }
 }
