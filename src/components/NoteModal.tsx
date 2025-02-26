@@ -1,3 +1,5 @@
+"use client";
+
 import { useEffect, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -9,112 +11,82 @@ import Image from "next/image";
 import axios from "axios";
 import TabBar from "./TabBar";
 import { MaximizedNoteModal } from "./MaximizedNoteModal";
+import { useNoteContext } from "@/context/NoteContext";
 
-export interface NoteModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  id: string;
-  title: string;
-  content: string;
-  noteIsRecorded?: boolean;
-  isFavorite?: boolean;
-  images?: string[];
-  duration?: string;
-  onRename: (id: string, newTitle: string) => void;
-}
+export default function NoteModal() {
+  const {
+    user,
+    notes,
+    selectedNoteId,
+    transcript, // Access transcript from context
+    setSelectedNoteId,
+    fetchNotes,
+    renameNote,
+  } = useNoteContext();
 
-export default function NoteModal({ 
-  isOpen, 
-  onClose, 
-  id, 
-  title, 
-  content, 
-  noteIsRecorded = false, 
-  isFavorite = false, 
-  images = [],
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  duration,
-  onRename 
-}: NoteModalProps) {
+  const selectedNote = notes.find((note) => note._id === selectedNoteId) || null;
+  const isOpen = !!selectedNoteId;
+
   const [isEditing, setIsEditing] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
-  const [isFavorited, setIsFavorited] = useState(isFavorite);
-  const [userID, setUserID] = useState<string>("");
-  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+  const [isFavorited, setIsFavorited] = useState(selectedNote?.isFavorite || false);
+  const [uploadedImages, setUploadedImages] = useState<string[]>(selectedNote?.images || []);
   const [formData, setFormData] = useState({
-    userId: "",
-    title: "",
-    noteContent: "",
-    isFavorite: false,
-    images: [] as string[],
-    noteIsRecorded: false,
+    userId: user?._id || "",
+    title: selectedNote?.title || "New Note",
+    noteContent: selectedNote?.noteContent || (selectedNoteId === "new-note" ? transcript : ""), // Use transcript for new note
+    isFavorite: selectedNote?.isFavorite || false,
+    images: selectedNote?.images || [],
+    noteIsRecorded: selectedNote?.noteIsRecorded || (selectedNoteId === "new-note" && transcript.length > 0),
   });
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
-  const synthRef = useRef<SpeechSynthesis | null>(null); // Ref for SpeechSynthesis
-  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null); // Ref for SpeechSynthesisUtterance15
+  const synthRef = useRef<SpeechSynthesis | null>(null);
+  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
-  // Initialize SpeechSynthesis
   useEffect(() => {
     if (typeof window !== "undefined") {
       synthRef.current = window.speechSynthesis;
     }
   }, []);
 
-  // Fetch user only once when modal opens
   useEffect(() => {
-    if (isOpen) {
-      fetchUser();
-    }
-  }, [isOpen]);
-
-  // Initialize form data only when needed props change
-  useEffect(() => {
-    if (isOpen) {
-      setUploadedImages(images);
-      setIsFavorited(isFavorite);
+    if (selectedNote) {
+      setUploadedImages(selectedNote.images);
+      setIsFavorited(selectedNote.isFavorite);
       setFormData({
-        userId: userID,
-        title: title || "",
-        noteContent: content || "",
-        noteIsRecorded: noteIsRecorded || false,
-        images: [...images],
-        isFavorite: isFavorite || false,
+        userId: user?._id || "",
+        title: selectedNote.title || "New Note",
+        noteContent: selectedNote.noteContent || "",
+        noteIsRecorded: selectedNote.noteIsRecorded || false,
+        images: selectedNote.images || [],
+        isFavorite: selectedNote.isFavorite || false,
+      });
+    } else if (selectedNoteId === "new-note") {
+      setUploadedImages([]);
+      setIsFavorited(false);
+      setFormData({
+        userId: user?._id || "",
+        title: "New Note",
+        noteContent: transcript, // Initialize with transcript for new note
+        noteIsRecorded: transcript.length > 0,
+        images: [],
+        isFavorite: false,
       });
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, userID, title, content, noteIsRecorded, isFavorite]);
-
-  const fetchUser = async () => {
-    try {
-      const response = await axios.get("http://localhost:3000/api/fetch-user");
-      if (response.data?.user?._id) {
-        setUserID(response.data.user._id);
-      } else {
-        console.error("User ID not found in response");
-      }
-    } catch (error) {
-      console.error("Error fetching user:", error);
-    }
-  };
+  }, [selectedNote, selectedNoteId, user, transcript]);
 
   const togglePlay = () => {
     if (!synthRef.current) return;
-
     if (isPlaying) {
-      // Pause speech
       synthRef.current.pause();
     } else {
-      // Start or resume speech
       if (!utteranceRef.current) {
-        // Create a new utterance if it doesn't exist
         utteranceRef.current = new SpeechSynthesisUtterance(formData.noteContent);
-        utteranceRef.current.onend = () => {
-          setIsPlaying(false);
-        };
+        utteranceRef.current.onend = () => setIsPlaying(false);
       }
       synthRef.current.speak(utteranceRef.current);
     }
@@ -131,10 +103,7 @@ export default function NoteModal({
     const newImages = [...uploadedImages];
     newImages.splice(index, 1);
     setUploadedImages(newImages);
-    setFormData(prev => ({
-      ...prev,
-      images: newImages,
-    }));
+    setFormData((prev) => ({ ...prev, images: newImages }));
   };
 
   const handleCopy = () => {
@@ -144,7 +113,7 @@ export default function NoteModal({
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const validateForm = () => {
@@ -169,24 +138,19 @@ export default function NoteModal({
     }
 
     try {
-      if (id && id !== "new-note") {
-        await axios.put(`http://localhost:3000/api/notes/${id}`, formData);
-        console.log("Updated note:", formData);
-        window.location.reload();
+      if (selectedNoteId && selectedNoteId !== "new-note") {
+        await axios.put(`http://localhost:3000/api/notes/${selectedNoteId}`, formData);
         toast.success("Note updated successfully!");
       } else {
         const response = await axios.post("http://localhost:3000/api/notes", formData);
-        window.location.reload();
         toast.success("Note created successfully!");
-        
         if (response.data?.note?._id) {
           setFormData((prev) => ({ ...prev, id: response.data.note._id }));
         }
       }
-
+      await fetchNotes();
       setIsSaving(false);
-      onClose();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      setSelectedNoteId(null);
     } catch (error: any) {
       setIsSaving(false);
       toast.error(error.response?.data?.message || "Failed to save note");
@@ -208,14 +172,10 @@ export default function NoteModal({
 
     try {
       const base64Images = await Promise.all(Array.from(files).map(convertToBase64));
-
-      // Update state with base64 images (for preview)
       setUploadedImages((prevImages) => [...prevImages, ...base64Images]);
-
-      // Send to your API
       setFormData((prevForm) => ({
         ...prevForm,
-        images: [...prevForm.images, ...base64Images], // Store Base64 in formData
+        images: [...prevForm.images, ...base64Images],
       }));
     } catch (error) {
       toast.error("Failed to process images");
@@ -248,31 +208,19 @@ export default function NoteModal({
     }
   };
 
-  // Use controlled dialog pattern
-  const handleDialogClose = () => {
-    onClose();
-  };
-
   return (
-    <Dialog open={isOpen} onOpenChange={handleDialogClose}>
+    <Dialog open={isOpen} onOpenChange={() => setSelectedNoteId(null)}>
       <DialogContent className={`${isFullscreen ? "w-full h-full max-w-none" : "max-w-2xl"}`}>
-        {/* Header with Icons Positioned */}
         <DialogHeader className="flex flex-col">
-          {/* Top Icons Row */}
           <div className="flex justify-between items-center w-full">
-            {/* Maximize Icon (Top-Left) */}
-            <Button 
+            <Button
               className="p-2 rounded-full bg-gray-300"
-              variant="ghost" 
-              size="sm" 
+              variant="ghost"
+              size="sm"
               onClick={() => setIsFullscreen(!isFullscreen)}
             >
-              {
-                isFullscreen ? <Minimize2Icon className="w-5 h-5" /> : <Maximize2Icon className="w-5 h-5" />
-              } 
+              {isFullscreen ? <Minimize2Icon className="w-5 h-5" /> : <Maximize2Icon className="w-5 h-5" />}
             </Button>
-
-            {/* Icons on the Top-Right */}
             <div className="flex space-x-2">
               <Button
                 variant="ghost"
@@ -291,12 +239,12 @@ export default function NoteModal({
                 <Share2 className="w-5 h-5 text-gray-500" />
               </Button>
               <DialogClose asChild className="p-2 rounded-full bg-gray-300">
-                <Button variant="ghost" size="sm"><X className="h-5 w-5" /></Button>
+                <Button variant="ghost" size="sm">
+                  <X className="h-5 w-5" />
+                </Button>
               </DialogClose>
             </div>
           </div>
-
-          {/* Title on Next Row */}
           <div className="mt-2 w-full">
             <DialogTitle className="text-lg font-semibold text-start mt-2">
               {isEditing ? (
@@ -307,12 +255,12 @@ export default function NoteModal({
                   onChange={handleChange}
                   onBlur={() => {
                     setIsEditing(false);
-                    onRename(id, formData.title);
+                    if (selectedNoteId) renameNote(selectedNoteId, formData.title);
                   }}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
                       setIsEditing(false);
-                      onRename(id, formData.title);
+                      if (selectedNoteId) renameNote(selectedNoteId, formData.title);
                     }
                   }}
                   autoFocus
@@ -320,22 +268,18 @@ export default function NoteModal({
                 />
               ) : (
                 <span onClick={() => setIsEditing(true)} className="cursor-pointer flex items-center gap-3">
-                  {formData.title || title} <Edit3Icon className="w-4 h-4 opacity-50" />
+                  {formData.title || selectedNote?.title} <Edit3Icon className="w-4 h-4 opacity-50" />
                 </span>
               )}
             </DialogTitle>
           </div>
         </DialogHeader>
 
-        {/* Audio Playback & Transcription */}
         <div className="flex flex-col">
           <div className="flex items-center w-full space-x-2 p-2 border border-gray-300 rounded-full">
-            {/* Play/Pause Button */}
-            <button onClick={togglePlay} className=" p-1 border rounded-full border-gray-300 bg-black">
+            <button onClick={togglePlay} className="p-1 border rounded-full border-gray-300 bg-black">
               {isPlaying ? <Pause className="w-4 h-4 text-white" /> : <Play className="w-4 h-4 text-white" />}
             </button>
-
-            {/* Progress Bar */}
             <div className="relative flex-grow">
               <input
                 type="range"
@@ -344,9 +288,7 @@ export default function NoteModal({
                 value={currentTime}
                 onChange={(e) => {
                   const newTime = Number(e.target.value);
-                  if (audioRef.current) {
-                    audioRef.current.currentTime = newTime;
-                  }
+                  if (audioRef.current) audioRef.current.currentTime = newTime;
                   setCurrentTime(newTime);
                 }}
                 className="w-full h-1 bg-gray-300 rounded-lg appearance-none cursor-pointer"
@@ -355,27 +297,17 @@ export default function NoteModal({
                 }}
               />
             </div>
-
-            {/* Time Display */}
-            <span className="text-xs text-gray-600 w-16 text-right">
-              {formatTime(currentTime)} / 00:05
-            </span>
-
-            {/* Download Button */}
+            <span className="text-xs text-gray-600 w-16 text-right">{formatTime(currentTime)} / 00:05</span>
             <a download onClick={() => {}} className="cursor text-xs text-gray-500 flex items-center space-x-1 border rounded-2xl border-gray-300 px-2 py-1">
               <Download className="w-4 h-4" />
               <span>Download Audio</span>
             </a>
-
-            {/* Hidden Audio Element */}
-            {/* <audio ref={audioRef} /> */}
           </div>
-
-          {/* TabBar Positioned Below Audio & Above Transcript */}
           <div className="mt-3 border-gray-300 rounded-full w-max">
             <TabBar />
           </div>
         </div>
+
         <div className="flex flex-col mt-1 border rounded-2xl border-gray-300">
           <div className="flex items-center justify-between p-2">
             <p className="text-md font-semibold">Transcript</p>
@@ -386,7 +318,7 @@ export default function NoteModal({
               <Button variant="outline" className="rounded-2xl opacity-60" size="sm" onClick={() => setIsMaximized(true)}>
                 <Maximize2Icon className="w-4 h-4" />
               </Button>
-            </div>  
+            </div>
           </div>
           <Textarea
             className="border-none p-2 rounded-md focus:border-none"
@@ -401,10 +333,9 @@ export default function NoteModal({
           isOpen={isMaximized}
           onClose={() => setIsMaximized(false)}
           content={formData.noteContent}
-          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setFormData(prev => ({ ...prev, noteContent: e.target.value }))}
+          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setFormData((prev) => ({ ...prev, noteContent: e.target.value }))}
         />
 
-        {/* Image Upload */}
         <div className="flex items-center space-x-2">
           {uploadedImages.map((src, index) => (
             <div key={index} className="relative w-16 h-16 border rounded-lg overflow-hidden">
@@ -417,8 +348,6 @@ export default function NoteModal({
               </button>
             </div>
           ))}
-
-          {/* Upload Button */}
           <label className="w-16 h-16 flex flex-col items-center justify-center border border-dashed rounded-lg cursor-pointer">
             <Upload className="w-6 h-6 text-gray-400" />
             <span className="text-xs text-gray-500">Image</span>
@@ -427,7 +356,7 @@ export default function NoteModal({
         </div>
 
         <div className="flex justify-end mt-4 space-x-2">
-          <Button variant="destructive" onClick={handleDialogClose}>Cancel Note</Button>
+          <Button variant="destructive" onClick={() => setSelectedNoteId(null)}>Cancel Note</Button>
           <Button variant="outline" onClick={handleSaveNote} disabled={isSaving}>
             {isSaving ? "Saving..." : "Save Note"}
           </Button>

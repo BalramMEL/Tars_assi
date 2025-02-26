@@ -1,102 +1,36 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import axios from "axios";
-import toast from "react-hot-toast";
 import { Sidebar, SidebarProvider } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { LayoutDashboard, Star, LogOut } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import NoteCard from "@/components/NoteCard";
 import CreateNote from "@/components/CreateNote";
 import Loader from "@/components/Loader";
 import SearchBar from "@/components/SearchBar";
 import SortButton from "@/components/Sort";
+import { NoteProvider, useNoteContext } from "@/context/NoteContext";
+import NoteCard from "@/components/NoteCard";
 
-interface Note {
-  _id: string;
-  title: string;
-  noteContent: string;
-  noteIsRecorded: boolean;
-  images: string[];
-  creationDate: string;
-  isFavorite: boolean;
-}
-
-export default function Home() {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [user, setUser] = useState<any>(null);
-  const [isFetchingUser, setIsFetchingUser] = useState(true);
-  const [notes, setNotes] = useState<Note[]>([]);
-  const [searchQuery, setSearchQuery] = useState<string>("");
-  const [viewMode, setViewMode] = useState<"all" | "favorites">("all");
-  const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest"); // Sorting order state
-  const router = useRouter();
-
-  useEffect(() => {
-    axios
-      .get("http://localhost:3000/api/fetch-user")
-      .then((response) => setUser(response.data.user))
-      .catch((error) => console.error("Error fetching user:", error))
-      .finally(() => setIsFetchingUser(false));
-  }, []);
-
-  useEffect(() => {
-    if (!isFetchingUser && user === null) {
-      router.push("/log-in");
-    }
-  }, [isFetchingUser, user, router]);
-
-  useEffect(() => {
-    if (user) {
-      const endpoint =
-        viewMode === "all"
-          ? `http://localhost:3000/api/notes?userId=${user._id}`
-          : `http://localhost:3000/api/favorite?userId=${user._id}`;
-
-      axios
-        .get(endpoint)
-        .then((response) => setNotes(response.data.notes))
-        .catch((error) => console.error("Error fetching notes:", error));
-    }
-  }, [user, viewMode]);
+function HomeContent() {
+  const {
+    user,
+    notes,
+    isFetchingUser,
+    searchQuery,
+    viewMode,
+    sortOrder,
+    setSearchQuery,
+    setViewMode,
+    setSortOrder,
+    handleLogout,
+  } = useNoteContext();
 
   if (isFetchingUser) {
     return <Loader />;
   }
 
-  const handleLogout = async () => {
-    try {
-      const response = await axios.post("http://localhost:3000/api/log-out");
-      toast.success(response.data.message);
-      router.push("/log-in");
-    } catch (error) {
-      toast.error("Failed to log out.");
-      console.error("Logout error:", error);
-    }
-  };
-
-  // Filter and Sort Notes
-  const filteredNotes = notes
-    .filter((note) => {
-      const query = searchQuery.toLowerCase();
-      return (
-        note.title.toLowerCase().includes(query) ||
-        note.noteContent.toLowerCase().includes(query)
-      );
-    })
-    .sort((a, b) => {
-      if (sortOrder === "newest") {
-        return new Date(b.creationDate).getTime() - new Date(a.creationDate).getTime();
-      } else {
-        return new Date(a.creationDate).getTime() - new Date(b.creationDate).getTime();
-      }
-    });
-
   return (
     <div className="flex h-screen">
-      {isFetchingUser && <Loader />}
       {/* Sidebar */}
       <SidebarProvider>
         <Sidebar>
@@ -148,27 +82,22 @@ export default function Home() {
 
           {/* Notes Section */}
           <div className="flex flex-wrap gap-4">
-            {filteredNotes.map((note) => (
-              <NoteCard
-                key={note._id}
-                id={note._id}
-                title={note.title}
-                isFavorite={note.isFavorite}
-                noteIsRecorded={note.noteIsRecorded}
-                images={note.images}
-                content={note.noteContent}
-                date={new Date(note.creationDate).toLocaleString()}
-                duration="N/A"
-                onDelete={(id) => setNotes(notes.filter((note) => note._id !== id))}
-                onRename={(id, newTitle) =>
-                  setNotes(notes.map((note) => (note._id === id ? { ...note, title: newTitle } : note)))
-                }
-              />
+            {notes.map((note) => (
+              <NoteCard key={note._id} {...note} date={new Date(note.creationDate).toLocaleString()} duration="N/A" />
             ))}
           </div>
         </div>
         <CreateNote />
       </SidebarProvider>
     </div>
+  );
+}
+
+export default function Home() {
+  return (
+    <NoteProvider>
+      <HomeContent />
+      {/* <CreateNote /> */}
+    </NoteProvider>
   );
 }
